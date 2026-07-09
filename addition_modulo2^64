@@ -1,0 +1,219 @@
+from projectq import MainEngine
+from projectq.ops import CNOT, Toffoli
+from projectq.backends import ResourceCounter
+from projectq.cengines import BasicEngine
+
+
+class DepthEstimator(BasicEngine):
+    def __init__(self):
+        super().__init__()
+        self.depths = {}
+        self.max_depth = 0
+
+    def is_available(self, cmd):
+        return True
+
+    def receive(self, command_list):
+        ignore_gates = {
+            "AllocateQubitGate",
+            "DeallocateQubitGate",
+            "FlushGate"
+        }
+
+        for cmd in command_list:
+            gate_name = cmd.gate.__class__.__name__
+
+            if gate_name in ignore_gates:
+                continue
+
+            qids = []
+            for qureg in cmd.all_qubits:
+                for qb in qureg:
+                    qids.append(qb.id)
+
+            if not qids:
+                continue
+
+            start = max(self.depths.get(qid, 0) for qid in qids)
+            new_depth = start + 1
+
+            for qid in qids:
+                self.depths[qid] = new_depth
+
+            self.max_depth = max(self.max_depth, new_depth)
+
+    def __str__(self):
+        return str(self.max_depth)
+
+
+def Toffoli_gate(eng, a, b, t):
+    Toffoli | (a, b, t)
+
+
+# ============================================================
+# Kalyna-128 state layout
+# State = 8 rows × 2 columns of bytes
+# byte(row,col) = state[8*(8*col + row) : 8*(8*col + row)+8]
+# Each column = 64 bits
+# ============================================================
+
+ROWS = 8
+COLS = 2
+
+
+def byte_index(row, col):
+    return 8 * (8 * col + row)
+
+
+def get_byte(state128, row, col):
+    p = byte_index(row, col)
+    return state128[p:p + 8]
+
+
+def set_byte(state128, row, col, byte8):
+    p = byte_index(row, col)
+    state128[p:p + 8] = byte8
+
+
+def get_column64(state128, col):
+    out = []
+    for row in range(ROWS):
+        out += get_byte(state128, row, col)
+    return out
+
+
+def set_column64(state128, col, col64):
+    for row in range(ROWS):
+        set_byte(state128, row, col, col64[8*row:8*row+8])
+
+
+# ============================================================
+# Correct Cuccaro-style modulo adder
+#
+# Computes:
+#     b <- b + a mod 2^n
+#     a unchanged
+#     carry returned to |0>
+#
+# IMPORTANT:
+# For modulo 2^n addition, there is NO final carry output.
+# So do NOT add a final CNOT from the last carry to b[n-1].
+# ============================================================
+
+def cuccaro_MAJ(eng, a, b, c):
+    """
+    Majority step.
+    """
+    CNOT | (a, b)
+    CNOT | (a, c)
+    Toffoli_gate(eng, b, c, a)
+
+
+def cuccaro_UMA(eng, a, b, c):
+    """
+    Unmajority-and-add step.
+    """
+    Toffoli_gate(eng, b, c, a)
+    CNOT | (a, c)
+    CNOT | (c, b)
+
+
+def add_mod_2n_inplace(eng, a, b):
+    """
+    Correct reversible modulo addition:
+        b <- b + a mod 2^n
+
+    a is unchanged.
+    b is updated.
+    Uses one clean carry qubit.
+
+    The middle CNOT is necessary to write the most significant sum bit.
+    It does not keep the final carry.
+    """
+    n = len(a)
+    carry = eng.allocate_qubit()   # initially |0>
+
+    # Forward carry propagation
+    cuccaro_MAJ(eng, a[0], b[0], carry)
+
+    for i in range(1, n):
+        cuccaro_MAJ(eng, a[i], b[i], a[i-1])
+
+    # Necessary for the MSB sum bit
+    CNOT | (a[n-1], b[n-1])
+
+    # Backward uncomputation
+    for i in reversed(range(1, n)):
+        cuccaro_UMA(eng, a[i], b[i], a[i-1])
+
+    cuccaro_UMA(eng, a[0], b[0], carry)
+
+    return b
+
+
+# ============================================================
+# Kalyna η: column-wise addition modulo 2^64
+#
+# For Kalyna-128:
+#     state column 0 <- state column 0 + key column 0 mod 2^64
+#     state column 1 <- state column 1 + key column 1 mod 2^64
+# ============================================================
+
+def kalyna_eta_add_round_key_mod64(eng, state128, key128):
+    state = list(state128)
+    key = list(key128)
+
+    for col in range(COLS):
+        s_col = get_column64(state, col)
+        k_col = get_column64(key, col)
+
+        add_mod_2n_inplace(eng, k_col, s_col)
+
+        set_column64(state, col, s_col)
+
+    return state
+
+
+# ============================================================
+# Run gate count and depth for η only
+# ============================================================
+
+def run_eta_counts():
+    print("=== Kalyna-128 η: modulo 2^64 AddRoundKey setup ===")
+    print("Expected for one 64-bit adder:")
+    print("    CCX = 128")
+    print("    CX  = 256")
+    print("Expected for two columns:")
+    print("    CCX = 256")
+    print("    CX  = 512")
+
+    # Gate count
+    rc = ResourceCounter()
+    eng1 = MainEngine(backend=rc)
+
+    state = eng1.allocate_qureg(128)
+    key = eng1.allocate_qureg(128)
+
+    _ = kalyna_eta_add_round_key_mod64(eng1, state, key)
+
+    eng1.flush()
+
+    print("\n=== Kalyna-128 η: modulo 2^64 AddRoundKey gate counts ===")
+    print(rc)
+
+    # Depth
+    dc = DepthEstimator()
+    eng2 = MainEngine(backend=dc)
+
+    state2 = eng2.allocate_qureg(128)
+    key2 = eng2.allocate_qureg(128)
+
+    _ = kalyna_eta_add_round_key_mod64(eng2, state2, key2)
+
+    eng2.flush()
+
+    print("Circuit depth:", dc)
+
+
+if __name__ == "__main__":
+    run_eta_counts()
