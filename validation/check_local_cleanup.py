@@ -222,7 +222,6 @@ def add64(a: int, b: int) -> tuple[int, int, int]:
     maj(st, A[0], B[0], carry)
     for i in range(1, n):
         maj(st, A[i], B[i], A[i-1])
-    cnot(st, A[n-1], B[n-1])
     for i in reversed(range(1, n)):
         uma(st, A[i], B[i], A[i-1])
     uma(st, A[0], B[0], carry)
