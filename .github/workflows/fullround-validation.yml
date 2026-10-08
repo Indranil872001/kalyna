@@ -12,11 +12,16 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout manuscript code
         uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
       - name: Fetch pinned official Kalyna reference
         run: |
@@ -33,12 +38,32 @@ jobs:
       - name: Check local reversible components and cleanup
         run: |
           set -euxo pipefail
-          python3 validation/check_local_cleanup.py
+          python validation/check_local_cleanup.py
 
       - name: Run full-round restricted-key Grover validation
         run: |
           set -euxo pipefail
-          python3 validation/run_fullround_sparse.py             --scanner ./validation/kalyna_scan             --unknown-bits 8,10,12,14             --include-minimal
+          python validation/run_fullround_sparse.py             --scanner ./validation/kalyna_scan             --unknown-bits 8,10,12,14             --include-minimal
+
+      - name: Install ProjectQ depth-audit dependencies
+        run: |
+          set -euxo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install numpy projectq==0.8.0
+
+      - name: Remeasure corrected ProjectQ depths
+        run: |
+          set -euxo pipefail
+          mkdir -p outputs/fullround_validation
+          python validation/depth_128_corrected.py             | tee outputs/fullround_validation/depth_128_corrected.txt
+          {
+            echo "=== 128/256 encryption core ==="
+            python kalyna_key_256 --mode enc
+            echo "=== 128/256 key schedule ==="
+            python kalyna_key_256 --mode ks
+            echo "=== 128/256 full ==="
+            python kalyna_key_256 --mode full
+          } | tee outputs/fullround_validation/depth_256_corrected.txt
 
       - name: Record immutable provenance
         run: |
@@ -47,7 +72,7 @@ jobs:
           {
             echo "kalyna_repo_commit=$(git rev-parse HEAD)"
             echo "official_reference_commit=$(git -C /tmp/Kalyna-reference rev-parse HEAD)"
-            echo "python=$(python3 --version 2>&1)"
+            echo "python=$(python --version 2>&1)"
             echo "gcc=$(gcc --version | head -1)"
           } > outputs/fullround_validation/provenance.txt
           sha256sum outputs/fullround_validation/* > outputs/fullround_validation/SHA256SUMS.txt
