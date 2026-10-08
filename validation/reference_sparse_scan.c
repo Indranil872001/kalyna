@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
 
 #include "kalyna.h"
@@ -108,18 +107,12 @@ int main(int argc, char **argv) {
 
     const uint64_t N = 1ULL << u;
     uint64_t marked = 0;
-    uint64_t first_marked = UINT64_MAX;
-    uint64_t last_marked = UINT64_MAX;
+    uint64_t first_marked = ~0ULL;
+    uint64_t last_marked = ~0ULL;
 
     for (uint64_t idx = 0; idx < N; ++idx) {
         uint64_t cand[4] = {0,0,0,0};
         memcpy(cand, true_key, (size_t)key_words * sizeof(uint64_t));
-
-        /*
-         * Affine restricted-key subspace: XOR the low u master-key bits.
-         * The true key is therefore candidate index 0, while all higher
-         * master-key bits remain exactly those of the official KAT key.
-         */
         cand[0] ^= idx;
 
         KalynaKeyExpand(cand, ctx);
