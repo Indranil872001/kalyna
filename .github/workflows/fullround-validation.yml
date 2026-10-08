@@ -1,0 +1,62 @@
+name: Kalyna full-round validation
+
+on:
+  push:
+    branches:
+      - fullround-validation-v1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout manuscript code
+        uses: actions/checkout@v4
+
+      - name: Fetch pinned official Kalyna reference
+        run: |
+          set -euxo pipefail
+          git clone https://github.com/Roman-Oliynykov/Kalyna-reference.git /tmp/Kalyna-reference
+          git -C /tmp/Kalyna-reference checkout 22eafbcaf6635dc5e1f8a734b1f7c5ab84b5a5ea
+          test "$(git -C /tmp/Kalyna-reference rev-parse HEAD)" = "22eafbcaf6635dc5e1f8a734b1f7c5ab84b5a5ea"
+
+      - name: Compile independent full-round scanner
+        run: |
+          set -euxo pipefail
+          gcc -O3 -std=c11 -Wall -Wextra -I/tmp/Kalyna-reference             validation/reference_sparse_scan.c             /tmp/Kalyna-reference/kalyna.c             /tmp/Kalyna-reference/tables.c             -o validation/kalyna_scan
+
+      - name: Check local reversible components and cleanup
+        run: |
+          set -euxo pipefail
+          python3 validation/check_local_cleanup.py
+
+      - name: Run full-round restricted-key Grover validation
+        run: |
+          set -euxo pipefail
+          python3 validation/run_fullround_sparse.py             --scanner ./validation/kalyna_scan             --unknown-bits 8,10,12,14             --include-minimal
+
+      - name: Record immutable provenance
+        run: |
+          set -euxo pipefail
+          mkdir -p outputs/fullround_validation
+          {
+            echo "kalyna_repo_commit=$(git rev-parse HEAD)"
+            echo "official_reference_commit=$(git -C /tmp/Kalyna-reference rev-parse HEAD)"
+            echo "python=$(python3 --version 2>&1)"
+            echo "gcc=$(gcc --version | head -1)"
+          } > outputs/fullround_validation/provenance.txt
+          sha256sum outputs/fullround_validation/* > outputs/fullround_validation/SHA256SUMS.txt
+          cat outputs/fullround_validation/fullround_sparse_report.md
+          cat outputs/fullround_validation/provenance.txt
+
+      - name: Upload validation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: kalyna-fullround-validation
+          path: outputs/fullround_validation/
+          if-no-files-found: error
