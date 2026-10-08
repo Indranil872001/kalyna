@@ -45,6 +45,11 @@ jobs:
           set -euxo pipefail
           python validation/run_fullround_sparse.py             --scanner ./validation/kalyna_scan             --unknown-bits 8,10,12,14             --include-minimal
 
+      - name: Recompute corrected logical resource tables
+        run: |
+          set -euxo pipefail
+          python validation/corrected_resource_counts.py
+
       - name: Install depth-audit dependency
         run: |
           set -euxo pipefail
