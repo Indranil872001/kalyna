@@ -127,8 +127,9 @@ def add_mod_2n_inplace(eng, a, b):
     b is updated.
     Uses one clean carry qubit.
 
-    The middle CNOT is necessary to write the most significant sum bit.
-    It does not keep the final carry.
+    For a modulo-2^n adder there is no separate final-carry output and
+    no middle carry-copy CNOT. The reverse UMA sweep writes all n sum bits
+    while restoring the addend and the clean carry.
     """
     n = len(a)
     carry = eng.allocate_qubit()   # initially |0>
@@ -138,9 +139,6 @@ def add_mod_2n_inplace(eng, a, b):
 
     for i in range(1, n):
         cuccaro_MAJ(eng, a[i], b[i], a[i-1])
-
-    # Necessary for the MSB sum bit
-    CNOT | (a[n-1], b[n-1])
 
     # Backward uncomputation
     for i in reversed(range(1, n)):
