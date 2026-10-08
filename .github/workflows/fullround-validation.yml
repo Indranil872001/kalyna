@@ -45,13 +45,15 @@ jobs:
           set -euxo pipefail
           python validation/run_fullround_sparse.py             --scanner ./validation/kalyna_scan             --unknown-bits 8,10,12,14             --include-minimal
 
-      - name: Install ProjectQ depth-audit dependencies
+      - name: Install depth-audit dependency
         run: |
           set -euxo pipefail
           python -m pip install --upgrade pip
-          python -m pip install numpy projectq==0.8.0
+          python -m pip install numpy
 
-      - name: Remeasure corrected ProjectQ depths
+      - name: Remeasure corrected dependency depths
+        env:
+          PYTHONPATH: validation/projectq_stub
         run: |
           set -euxo pipefail
           mkdir -p outputs/fullround_validation
@@ -74,9 +76,12 @@ jobs:
             echo "official_reference_commit=$(git -C /tmp/Kalyna-reference rev-parse HEAD)"
             echo "python=$(python --version 2>&1)"
             echo "gcc=$(gcc --version | head -1)"
+            echo "depth_backend=validation/projectq_stub"
           } > outputs/fullround_validation/provenance.txt
           sha256sum outputs/fullround_validation/* > outputs/fullround_validation/SHA256SUMS.txt
           cat outputs/fullround_validation/fullround_sparse_report.md
+          cat outputs/fullround_validation/depth_128_corrected.txt
+          cat outputs/fullround_validation/depth_256_corrected.txt
           cat outputs/fullround_validation/provenance.txt
 
       - name: Upload validation evidence
