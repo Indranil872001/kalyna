@@ -1,4 +1,4 @@
-name: Kalyna resource audit
+name: Kalyna resource audit\n# Fast independent certificate for manuscript headline counts.
 
 on:
   push:
