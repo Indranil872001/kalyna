@@ -50,6 +50,27 @@ static void encrypt128(kalyna_t *ctx, const uint64_t pt[2], uint64_t ct[2]) {
     KalynaEncipher(in, ctx, ct);
 }
 
+static void build_positions(int keybits, int u, int pos[20],
+                            int *base_out, int *stride_out) {
+    const int base = (13 * u + 7) % keybits;
+    const int stride = ((2 * u + 5) % keybits) | 1;
+    for (int i = 0; i < u; ++i) {
+        pos[i] = (base + i * stride) % keybits;
+    }
+    *base_out = base;
+    *stride_out = stride;
+}
+
+static void apply_index(uint64_t key[4], uint64_t idx, const int pos[20], int u) {
+    for (int i = 0; i < u; ++i) {
+        if ((idx >> i) & 1ULL) {
+            const int w = pos[i] / 64;
+            const int b = pos[i] % 64;
+            key[w] ^= 1ULL << b;
+        }
+    }
+}
+
 int main(int argc, char **argv) {
     if (argc != 4) {
         fprintf(stderr, "usage: %s <keybits:128|256> <unknown_bits:1..20> <pairs>\n", argv[0]);
@@ -105,6 +126,14 @@ int main(int argc, char **argv) {
         return 4;
     }
 
+    /*
+     * Use a deterministic spread affine subspace rather than the low u bits.
+     * Since keybits is a power of two and stride is odd, the first u
+     * coordinates are distinct for all tested u <= 20.
+     */
+    int positions[20], subspace_base = 0, subspace_stride = 0;
+    build_positions(keybits, u, positions, &subspace_base, &subspace_stride);
+
     const uint64_t N = 1ULL << u;
     uint64_t marked = 0;
     uint64_t first_marked = ~0ULL;
@@ -113,7 +142,7 @@ int main(int argc, char **argv) {
     for (uint64_t idx = 0; idx < N; ++idx) {
         uint64_t cand[4] = {0,0,0,0};
         memcpy(cand, true_key, (size_t)key_words * sizeof(uint64_t));
-        cand[0] ^= idx;
+        apply_index(cand, idx, positions, u);
 
         KalynaKeyExpand(cand, ctx);
 
@@ -149,6 +178,8 @@ int main(int argc, char **argv) {
     } else {
         printf("\"first_marked\":null,\"last_marked\":null,");
     }
+    printf("\"subspace_base\":%d,\"subspace_stride\":%d,",
+           subspace_base, subspace_stride);
     printf("\"official_kat_pass\":true,");
     printf("\"target_ciphertexts\":[\"%s\"", t0);
     if (max_pairs >= 2) printf(",\"%s\"", t1);
