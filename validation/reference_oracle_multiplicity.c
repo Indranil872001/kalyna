@@ -7,19 +7,20 @@
 /*
  * Full-round Kalyna oracle-multiplicity experiment.
  *
- * The candidate domain is a 2^u affine subspace obtained by XORing the low
- * u bits of the first 64-bit master-key word. For each deterministic trial
- * we choose a different true key inside that subspace and a different
- * 128-bit plaintext, encrypt with the pinned official Kalyna implementation,
- * and count how many candidate keys agree with the target on three nested
+ * Each deterministic trial searches a different 2^u affine master-key
+ * subspace.  The u free coordinates are spread across the 128- or 256-bit
+ * master key using an odd stride, so the experiment is not tied to the low
+ * key bits.  The trial chooses one true key inside that subspace and one
+ * plaintext, encrypts with the pinned official Kalyna implementation, and
+ * counts how many candidate keys agree with the target on three nested
  * ciphertext windows: b=u-4, b=u, and b=u+4 bits.
  *
  * One full-round candidate encryption is reused for all three comparisons.
  * Matching only b ciphertext bits is an experimental surrogate that makes
  * the spurious-key occupancy transition observable in a tractable restricted
- * domain. Every encryption itself is full round and uses the full key
+ * domain. Every encryption itself is full round and uses the complete key
  * schedule. This program does not claim that a b-bit comparison is the
- * production key-recovery oracle.
+ * production historical-key recovery oracle.
  */
 
 static const uint64_t KEY128_BASE[2] = {
@@ -93,6 +94,28 @@ static int official_kat_ok(kalyna_t *ctx, int keybits) {
     return eq128(ct, C256_KAT);
 }
 
+static void copy_base_key(uint64_t out[4], int keybits) {
+    memset(out, 0, 4 * sizeof(uint64_t));
+    if (keybits == 128) memcpy(out, KEY128_BASE, sizeof(KEY128_BASE));
+    else memcpy(out, KEY256_BASE, sizeof(KEY256_BASE));
+}
+
+static void build_positions(int keybits, int u, int base, int stride, int pos[20]) {
+    for (int i = 0; i < u; ++i) {
+        pos[i] = (base + i * stride) % keybits;
+    }
+}
+
+static void apply_index(uint64_t key[4], uint64_t idx, const int pos[20], int u) {
+    for (int i = 0; i < u; ++i) {
+        if ((idx >> i) & 1ULL) {
+            int w = pos[i] / 64;
+            int b = pos[i] % 64;
+            key[w] ^= 1ULL << b;
+        }
+    }
+}
+
 int main(int argc, char **argv) {
     if (argc != 4) {
         fprintf(stderr,
@@ -133,14 +156,22 @@ int main(int argc, char **argv) {
                   ^ 0x4b414c594e41554cULL;
 
     for (int t = 0; t < trials; ++t) {
+        /*
+         * Because keybits is a power of two, any odd stride is coprime to the
+         * key length. Hence the first u positions are distinct for u<=20.
+         */
+        int subspace_base = (int)(xs64(&seed) % (uint64_t)keybits);
+        int subspace_stride = (int)(xs64(&seed) % (uint64_t)keybits) | 1;
+        int positions[20];
+        build_positions(keybits, u, subspace_base, subspace_stride, positions);
+
         uint64_t true_index = xs64(&seed) & (N - 1);
         uint64_t pt[2] = {xs64(&seed), xs64(&seed)};
-        int offset = (int)(xs64(&seed) & 127ULL);
+        int window_offset = (int)(xs64(&seed) & 127ULL);
 
-        uint64_t true_key[4] = {0,0,0,0};
-        if (keybits == 128) memcpy(true_key, KEY128_BASE, sizeof(KEY128_BASE));
-        else memcpy(true_key, KEY256_BASE, sizeof(KEY256_BASE));
-        true_key[0] ^= true_index;
+        uint64_t true_key[4];
+        copy_base_key(true_key, keybits);
+        apply_index(true_key, true_index, positions, u);
 
         KalynaKeyExpand(true_key, ctx);
         uint64_t target[2] = {0,0};
@@ -148,17 +179,16 @@ int main(int argc, char **argv) {
 
         uint64_t m0[3], m1[3];
         for (int z = 0; z < 3; ++z) {
-            build_window_masks(offset, compare_bits[z], &m0[z], &m1[z]);
+            build_window_masks(window_offset, compare_bits[z], &m0[z], &m1[z]);
         }
 
         uint64_t marked[3] = {0,0,0};
         uint64_t first_wrong[3] = {~0ULL, ~0ULL, ~0ULL};
 
         for (uint64_t idx = 0; idx < N; ++idx) {
-            uint64_t cand[4] = {0,0,0,0};
-            if (keybits == 128) memcpy(cand, KEY128_BASE, sizeof(KEY128_BASE));
-            else memcpy(cand, KEY256_BASE, sizeof(KEY256_BASE));
-            cand[0] ^= idx;
+            uint64_t cand[4];
+            copy_base_key(cand, keybits);
+            apply_index(cand, idx, positions, u);
 
             KalynaKeyExpand(cand, ctx);
             uint64_t ct[2] = {0,0};
@@ -182,7 +212,9 @@ int main(int argc, char **argv) {
             printf("\"compare_bits\":%d,\"trial\":%d,", compare_bits[z], t);
             printf("\"candidates\":%llu,", (unsigned long long)N);
             printf("\"true_index\":%llu,", (unsigned long long)true_index);
-            printf("\"window_offset\":%d,", offset);
+            printf("\"window_offset\":%d,", window_offset);
+            printf("\"subspace_base\":%d,\"subspace_stride\":%d,",
+                   subspace_base, subspace_stride);
             printf("\"marked_count\":%llu,\"wrong_count\":%llu,",
                    (unsigned long long)marked[z], (unsigned long long)wrong);
             if (first_wrong[z] == ~0ULL) printf("\"first_wrong\":null,");
