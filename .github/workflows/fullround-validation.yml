@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - fullround-validation-v1
+      - npj-oracle-multiplicity-v1
   workflow_dispatch:
 
 permissions:
@@ -12,7 +13,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
 
     steps:
       - name: Checkout manuscript code
@@ -30,20 +31,26 @@ jobs:
           git -C /tmp/Kalyna-reference checkout 22eafbcaf6635dc5e1f8a734b1f7c5ab84b5a5ea
           test "$(git -C /tmp/Kalyna-reference rev-parse HEAD)" = "22eafbcaf6635dc5e1f8a734b1f7c5ab84b5a5ea"
 
-      - name: Compile independent full-round scanner
+      - name: Compile independent full-round scanners
         run: |
           set -euxo pipefail
-          gcc -O3 -std=c11 -Wall -Wextra -I/tmp/Kalyna-reference             validation/reference_sparse_scan.c             /tmp/Kalyna-reference/kalyna.c             /tmp/Kalyna-reference/tables.c             -o validation/kalyna_scan
+          gcc -O3 -std=c11 -Wall -Wextra -I/tmp/Kalyna-reference             validation/reference_sparse_scan.c             /tmp/Kalyna-reference/kalyna.c /tmp/Kalyna-reference/tables.c             -o validation/kalyna_scan
+          gcc -O3 -std=c11 -Wall -Wextra -I/tmp/Kalyna-reference             validation/reference_oracle_multiplicity.c             /tmp/Kalyna-reference/kalyna.c /tmp/Kalyna-reference/tables.c             -o validation/kalyna_multiplicity_scan
 
       - name: Check local reversible components and cleanup
         run: |
           set -euxo pipefail
           python validation/check_local_cleanup.py
 
-      - name: Run full-round restricted-key Grover validation
+      - name: Run extended full-round restricted-key Grover validation
         run: |
           set -euxo pipefail
-          python validation/run_fullround_sparse.py             --scanner ./validation/kalyna_scan             --unknown-bits 8,10,12,14             --include-minimal
+          python validation/run_fullround_sparse.py             --scanner ./validation/kalyna_scan             --unknown-bits 8,10,12,14,16,18,20             --include-minimal
+
+      - name: Run full-round oracle-multiplicity experiment
+        run: |
+          set -euxo pipefail
+          python validation/run_oracle_multiplicity.py             --scanner ./validation/kalyna_multiplicity_scan             --unknown-bits 16             --trials 32             --offsets=-4,0,4
 
       - name: Recompute corrected logical resource tables
         run: |
@@ -83,8 +90,9 @@ jobs:
             echo "gcc=$(gcc --version | head -1)"
             echo "depth_backend=validation/projectq_stub"
           } > outputs/fullround_validation/provenance.txt
-          sha256sum outputs/fullround_validation/* > outputs/fullround_validation/SHA256SUMS.txt
+          find outputs -type f -print0 | sort -z | xargs -0 sha256sum > outputs/SHA256SUMS.txt
           cat outputs/fullround_validation/fullround_sparse_report.md
+          cat outputs/oracle_multiplicity/oracle_multiplicity_report.md
           cat outputs/fullround_validation/depth_128_corrected.txt
           cat outputs/fullround_validation/depth_256_corrected.txt
           cat outputs/fullround_validation/provenance.txt
@@ -92,6 +100,6 @@ jobs:
       - name: Upload validation evidence
         uses: actions/upload-artifact@v4
         with:
-          name: kalyna-fullround-validation
-          path: outputs/fullround_validation/
+          name: kalyna-npj-validation
+          path: outputs/
           if-no-files-found: error
