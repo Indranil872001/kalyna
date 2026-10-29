@@ -47,10 +47,10 @@ jobs:
           set -euxo pipefail
           python validation/run_fullround_sparse.py             --scanner ./validation/kalyna_scan             --unknown-bits 8,10,12,14,16,18,20             --include-minimal
 
-      - name: Run full-round oracle-multiplicity experiment
+      - name: Run statistically strengthened full-round multiplicity experiment
         run: |
           set -euxo pipefail
-          python validation/run_oracle_multiplicity.py             --scanner ./validation/kalyna_multiplicity_scan             --unknown-bits 16             --trials 32
+          python validation/run_oracle_multiplicity.py             --scanner ./validation/kalyna_multiplicity_scan             --unknown-bits 12,14,16             --trials 128
 
       - name: Recompute corrected logical resource tables
         run: |
