@@ -50,7 +50,7 @@ jobs:
       - name: Run full-round oracle-multiplicity experiment
         run: |
           set -euxo pipefail
-          python validation/run_oracle_multiplicity.py             --scanner ./validation/kalyna_multiplicity_scan             --unknown-bits 16             --trials 32             --offsets=-4,0,4
+          python validation/run_oracle_multiplicity.py             --scanner ./validation/kalyna_multiplicity_scan             --unknown-bits 16             --trials 32
 
       - name: Recompute corrected logical resource tables
         run: |
