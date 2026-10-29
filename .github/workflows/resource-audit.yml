@@ -1,0 +1,32 @@
+name: Kalyna resource audit
+
+on:
+  push:
+    branches:
+      - npj-oracle-multiplicity-v1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  resource-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Recompute cipher and shared-key-schedule Grover resources
+        run: |
+          set -euxo pipefail
+          python validation/corrected_resource_counts.py | tee resource_audit.json
+          python - <<'PY'
+          import json
+          d=json.load(open("resource_audit.json"))
+          assert d["128/128"]["historical_grover"]["shared_key_schedule"]["complete_iteration_ccx"] == 1703126
+          assert d["128/128"]["historical_grover"]["shared_key_schedule"]["T_7_per_CCX"] == 11921882
+          assert d["128/256"]["historical_grover"]["shared_key_schedule"]["complete_iteration_ccx"] == 2963222
+          assert d["128/256"]["historical_grover"]["shared_key_schedule"]["T_7_per_CCX"] == 20742554
+          print("SHARED_KEY_SCHEDULE_RESOURCE_AUDIT_PASS")
+          PY
