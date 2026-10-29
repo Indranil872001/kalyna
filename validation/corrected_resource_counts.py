@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Recompute corrected logical resource tables from declared Kalyna components."""
+"""Recompute corrected logical resource tables and Grover CCX baselines."""
 
 from __future__ import annotations
 
@@ -57,6 +57,45 @@ def key_schedule(even_keys):
     return add(ksigma, scale(one_even, even_keys))
 
 
+def historical_grover_ccx(enc_ccx: int, ks_ccx: int, key_bits: int,
+                         block_bits: int, pairs: int) -> dict:
+    """CCX count for one historical-key Grover iteration.
+
+    The optimized retained-key-bank model computes the key schedule once,
+    performs r forward encryptions using the shared round-key bank, marks the
+    joint rn-bit equality condition, uncomputes the r encryptions, and then
+    uncomputes the key schedule. Key fanout, when parallel encryption copies
+    are used, is Clifford-only and therefore does not change this CCX count.
+
+    A conservative recompute-per-pair baseline is retained for comparison.
+    """
+    eq = 2 * pairs * block_bits - 5
+    diff = 2 * key_bits - 5
+
+    shared_cipher = 2 * ks_ccx + 2 * pairs * enc_ccx
+    shared_total = shared_cipher + eq + diff
+
+    full_ccx = enc_ccx + ks_ccx
+    recompute_cipher = 2 * pairs * full_ccx
+    recompute_total = recompute_cipher + eq + diff
+
+    return {
+        "pairs": pairs,
+        "equality_ccx": eq,
+        "diffuser_ccx": diff,
+        "shared_key_schedule": {
+            "cipher_ccx": shared_cipher,
+            "complete_iteration_ccx": shared_total,
+            "T_7_per_CCX": 7 * shared_total,
+        },
+        "recompute_key_schedule_per_pair": {
+            "cipher_ccx": recompute_cipher,
+            "complete_iteration_ccx": recompute_total,
+            "T_7_per_CCX": 7 * recompute_total,
+        },
+    }
+
+
 def main():
     rows = {
         "128/128": {
@@ -91,6 +130,23 @@ def main():
         for sec, tup in sections.items():
             got = rows[v][sec]
             assert (got["X"],got["CNOT"],got["CCX"]) == tup, (v,sec,got,tup)
+
+    rows["128/128"]["historical_grover"] = historical_grover_ccx(
+        rows["128/128"]["encryption"]["CCX"],
+        rows["128/128"]["key_schedule"]["CCX"],
+        key_bits=128, block_bits=128, pairs=2,
+    )
+    rows["128/256"]["historical_grover"] = historical_grover_ccx(
+        rows["128/256"]["encryption"]["CCX"],
+        rows["128/256"]["key_schedule"]["CCX"],
+        key_bits=256, block_bits=128, pairs=3,
+    )
+
+    # Lock the two headline optimized iteration counts.
+    assert rows["128/128"]["historical_grover"]["shared_key_schedule"]["complete_iteration_ccx"] == 1703126
+    assert rows["128/128"]["historical_grover"]["shared_key_schedule"]["T_7_per_CCX"] == 11921882
+    assert rows["128/256"]["historical_grover"]["shared_key_schedule"]["complete_iteration_ccx"] == 2963222
+    assert rows["128/256"]["historical_grover"]["shared_key_schedule"]["T_7_per_CCX"] == 20742554
 
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "corrected_resource_counts.json").write_text(
