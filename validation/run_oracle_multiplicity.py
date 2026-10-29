@@ -8,10 +8,8 @@ ideal-cipher prediction for each wrong candidate is p = 2^{-b}, so
     W ~ Binomial(2^u - 1, 2^{-b}),
     E[W] = (2^u - 1) 2^{-b}.
 
-The critical regime b = u has mean approximately one and approaches
-Poisson(1).  We test the subcritical, critical, and supercritical regimes
-using full-round Kalyna encryption while keeping the searched key subspace
-tractable.
+The scanner evaluates b=u-4, u, u+4 on the same full-round encryptions,
+giving expected wrong-key multiplicities approximately 16, 1, and 1/16.
 """
 
 from __future__ import annotations
@@ -22,13 +20,13 @@ import json
 import math
 import statistics
 import subprocess
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 
 
-def run(scanner: Path, key_bits: int, u: int, b: int, trials: int) -> list[dict]:
+def run(scanner: Path, key_bits: int, u: int, trials: int) -> list[dict]:
     cp = subprocess.run(
-        [str(scanner), str(key_bits), str(u), str(b), str(trials)],
+        [str(scanner), str(key_bits), str(u), str(trials)],
         check=True,
         text=True,
         capture_output=True,
@@ -38,8 +36,9 @@ def run(scanner: Path, key_bits: int, u: int, b: int, trials: int) -> list[dict]
         line = line.strip()
         if line:
             rows.append(json.loads(line))
-    if len(rows) != trials:
-        raise RuntimeError(f"expected {trials} rows, got {len(rows)}")
+    expected = 3 * trials
+    if len(rows) != expected:
+        raise RuntimeError(f"expected {expected} rows, got {len(rows)}")
     if not all(r.get("official_kat_pass") for r in rows):
         raise AssertionError("official KAT failed")
     return rows
@@ -63,14 +62,15 @@ def summarize(rows: list[dict]) -> dict:
     zero_fraction = sum(x == 0 for x in wrong) / n
     hist = Counter(wrong)
 
-    # A compact empirical-vs-Poisson discrepancy over the observed support
-    # plus one tail bucket. This is descriptive, not used as a pass/fail test.
     kmax = max(hist)
     tv = 0.0
     for k in range(kmax + 1):
         tv += abs(hist.get(k, 0) / n - poisson_pmf(k, lam))
     poisson_tail = max(0.0, 1.0 - sum(poisson_pmf(k, lam) for k in range(kmax + 1)))
     tv = 0.5 * (tv + poisson_tail)
+
+    mean_se = math.sqrt((N - 1) * p * (1.0 - p) / n)
+    mean_z = (mean - lam) / mean_se if mean_se > 0 else 0.0
 
     return {
         "variant": rows[0]["variant"],
@@ -85,6 +85,8 @@ def summarize(rows: list[dict]) -> dict:
         "empirical_variance_wrong": var,
         "empirical_zero_fraction": zero_fraction,
         "variance_to_mean": (var / mean) if mean > 0 else None,
+        "mean_standard_error": mean_se,
+        "mean_z_score": mean_z,
         "poisson_tv_on_observed_support": tv,
         "min_wrong": min(wrong),
         "max_wrong": max(wrong),
@@ -98,28 +100,21 @@ def main() -> None:
     ap.add_argument("--outdir", type=Path, default=Path("outputs/oracle_multiplicity"))
     ap.add_argument("--unknown-bits", type=int, default=16)
     ap.add_argument("--trials", type=int, default=32)
-    ap.add_argument(
-        "--offsets",
-        default="-4,0,4",
-        help="comparison-bit offsets relative to u; default tests lambda~16,1,1/16",
-    )
     args = ap.parse_args()
 
     u = args.unknown_bits
-    offsets = [int(x) for x in args.offsets.split(",") if x.strip()]
-    compare_bits = [u + d for d in offsets]
-    if any(b < 1 or b > 128 for b in compare_bits):
-        raise ValueError("comparison bit count outside 1..128")
-
     args.outdir.mkdir(parents=True, exist_ok=True)
     all_rows: list[dict] = []
     summaries: list[dict] = []
 
     for key_bits in (128, 256):
-        for b in compare_bits:
-            rows = run(args.scanner, key_bits, u, b, args.trials)
-            all_rows.extend(rows)
-            s = summarize(rows)
+        rows = run(args.scanner, key_bits, u, args.trials)
+        all_rows.extend(rows)
+        groups: dict[int, list[dict]] = defaultdict(list)
+        for row in rows:
+            groups[int(row["compare_bits"])].append(row)
+        for b in sorted(groups):
+            s = summarize(groups[b])
             summaries.append(s)
             print(json.dumps(s, sort_keys=True))
 
@@ -135,8 +130,8 @@ def main() -> None:
         "ideal_lambda", "ideal_zero_probability_binomial",
         "ideal_zero_probability_poisson", "empirical_mean_wrong",
         "empirical_variance_wrong", "empirical_zero_fraction",
-        "variance_to_mean", "poisson_tv_on_observed_support",
-        "min_wrong", "max_wrong",
+        "variance_to_mean", "mean_standard_error", "mean_z_score",
+        "poisson_tv_on_observed_support", "min_wrong", "max_wrong",
     ]
     with (args.outdir / "oracle_multiplicity_summary.csv").open("w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
@@ -149,11 +144,12 @@ def main() -> None:
         "Each trial evaluates the complete Kalyna cipher and complete key schedule",
         "for every key in a 2^u affine key subspace. Only the equality test is",
         "truncated to b ciphertext bits so the false-key occupancy transition is",
-        "observable at tractable u. This is an experimental surrogate, not a",
+        "observable at tractable u. The same full-round candidate encryption is",
+        "scored at b=u-4, u, and u+4. This is an experimental surrogate, not a",
         "claim that the production key-recovery oracle compares only b bits.",
         "",
-        "| Variant | u | b | trials | ideal lambda | empirical mean W | ideal Pr[W=0] | empirical Pr[W=0] | var/mean |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| Variant | u | b | trials | ideal lambda | empirical mean W | z(mean) | ideal Pr[W=0] | empirical Pr[W=0] | var/mean |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for s in summaries:
         vm = s["variance_to_mean"]
@@ -161,7 +157,7 @@ def main() -> None:
         report.append(
             f"| {s['variant']} | {s['unknown_bits']} | {s['compare_bits']} | "
             f"{s['trials']} | {s['ideal_lambda']:.5f} | "
-            f"{s['empirical_mean_wrong']:.5f} | "
+            f"{s['empirical_mean_wrong']:.5f} | {s['mean_z_score']:.2f} | "
             f"{s['ideal_zero_probability_binomial']:.5f} | "
             f"{s['empirical_zero_fraction']:.5f} | {vm_txt} |"
         )
