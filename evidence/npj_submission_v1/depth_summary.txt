@@ -1,0 +1,8 @@
+Source full-validation run: GitHub Actions run 40885242143, commit bcb4696e7f8235ef7d0fbba9136146da440fea4d
+Pinned reference implementation: 22eafbcaf6635dc5e1f8a734b1f7c5ab84b5a5ea
+128/128 encryption depth = 31365
+128/128 key-schedule depth = 18424
+128/128 full depth = 48189
+128/256 encryption depth = 43677
+128/256 key-schedule depth = 19064
+128/256 full depth = 60501
