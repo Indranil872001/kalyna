@@ -29,8 +29,21 @@ bash scripts/reproduce_oracle_certificate.sh
 
 It pins the independent reference implementation, compiles the reference
 harness, runs the exact compiler, compares every round key and ciphertext,
-checks phase marking and exact work-register restoration, and writes the
-certificate under `outputs/full_oracle_certificate/`.
+checks phase marking, checks four perturbed wrong keys per variant, measures
+the concrete logical depth/width, and verifies exact work-register restoration.
+
+## Submission evidence
+
+The reviewer-facing machine-readable snapshot is:
+
+- `evidence/npj_submission_v3/`
+
+It contains the restricted-key search results, finite-shot tables, occupancy
+statistics, local component checks, exact resource audit and clean-oracle
+certificate summary.
+
+The core passing CI runs used by the submission are documented in
+`SUBMISSION_SNAPSHOT.md`.
 
 ## Other submission experiments
 
@@ -47,20 +60,13 @@ certificate under `outputs/full_oracle_certificate/`.
 
 GitHub Actions workflows under `.github/workflows/` reproduce these checks.
 
-## Evidence
-
-Machine-readable evidence is stored under `evidence/`. The final submission
-snapshot will point to a single `npj_submission_v3` directory containing the
-clean-oracle certificate together with the restricted-key, finite-shot,
-occupancy and resource evidence.
-
 ## What is in legacy/
 
 The former root-level files
 `kalyna_key-128`, `kalyna_key_256`, `kalyna_key_schedule_128`,
 `addition_modulo2^64` and `kalyna_mixcolumn` came from different stages of
-the research. They are now preserved under `legacy/` so they cannot be
-mistaken for the submission implementation.
+the research. They are preserved under `legacy/` so they cannot be mistaken
+for the submission implementation.
 
 In particular:
 
@@ -75,6 +81,7 @@ See `legacy/README.md` for details.
 
 The compiler certificate establishes a clean **logical** phase oracle. It does
 not claim present-day hardware execution, surface-code overhead, routing,
-magic-state-factory cost or architecture-specific latency. The exact
-retained-garbage compiler also exposes its concrete logical width rather than
-silently discarding intermediate S-box/key-schedule history.
+magic-state-factory cost or architecture-specific latency. The concrete
+retained-garbage compiler reports its actual width and a schedule-dependent
+logical dependency depth rather than silently discarding intermediate
+S-box/key-schedule history.
