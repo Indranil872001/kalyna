@@ -146,7 +146,11 @@ def sample_histogram_one_marked(
 
 
 def load_historical_rows(path: Path) -> list[dict]:
-    rows = json.loads(path.read_text())
+    if path.suffix.lower() == ".csv":
+        with path.open(newline="") as f:
+            rows = list(csv.DictReader(f))
+    else:
+        rows = json.loads(path.read_text())
     hist = [r for r in rows if r.get("model") == "historical-key"]
     if not hist:
         raise RuntimeError("no historical-key rows found")
