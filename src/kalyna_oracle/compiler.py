@@ -1000,6 +1000,43 @@ def compile_phase_oracle(
     )
 
 
+def _dependency_depth_for_oracle(program: OracleProgram) -> int:
+    """Dependency depth of forward -> mark -> exact reverse-forward.
+
+    This is the depth of the concrete emitted logical schedule under unlimited
+    connectivity and unit depth for X/CNOT/CCNOT/CCZ. It is a schedule-specific
+    upper bound, not an optimized-depth claim.
+    """
+    width = program.tape.physical_width
+    depths = [0] * width
+    max_depth = 0
+
+    def apply(gate):
+        nonlocal max_depth
+        typ, a, b, c = gate
+        if typ == XG:
+            wires = (a,)
+        elif typ == CXG:
+            wires = (a, b)
+        elif typ in (CCXG, CCZG):
+            wires = (a, b, c)
+        else:
+            raise ValueError(f"unknown gate type {typ}")
+        d = max(depths[q] for q in wires) + 1
+        for q in wires:
+            depths[q] = d
+        if d > max_depth:
+            max_depth = d
+
+    for g in program.tape.gates[: program.forward_end]:
+        apply(g)
+    for g in program.tape.gates[program.mark_start : program.mark_end]:
+        apply(g)
+    for g in reversed(program.tape.gates[: program.forward_end]):
+        apply(g)
+    return max_depth
+
+
 def oracle_resource_summary(program: OracleProgram) -> dict:
     t = program.tape
     f = Counter()
@@ -1041,9 +1078,10 @@ def oracle_resource_summary(program: OracleProgram) -> dict:
         "phase_oracle_compute_mark_uncompute": total,
         "compiled_physical_width": t.physical_width,
         "peak_live_width_during_compilation": t.peak_live,
-        "forward_dependency_depth": max(
+        "compute_plus_mark_dependency_depth": max(
             (t.depth[q] for q in range(t.physical_width)), default=0
         ),
+        "complete_phase_oracle_dependency_depth": _dependency_depth_for_oracle(program),
         "forward_gate_hash": t.hash_gate_slice(0, program.forward_end),
         "mark_gate_hash": t.hash_gate_slice(program.mark_start, program.mark_end),
         "inverse_definition": "exact reverse of forward gate slice",
