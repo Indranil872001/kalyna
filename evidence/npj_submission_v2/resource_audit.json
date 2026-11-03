@@ -1,0 +1,15 @@
+{
+  "source_resource_audit_run": 40887441499,
+  "source_commit": "e71442053da20f7473afa3a79b89b0e6dfbb9f29",
+  "128/128": {
+    "full_cipher_ccx": 609232,
+    "shared_key_schedule_grover_iteration_ccx": 1703126,
+    "logical_T_7_per_CCX": 11921882
+  },
+  "128/256": {
+    "full_cipher_ccx": 803920,
+    "shared_key_schedule_grover_iteration_ccx": 2963222,
+    "logical_T_7_per_CCX": 20742554
+  },
+  "status": "PASS"
+}
