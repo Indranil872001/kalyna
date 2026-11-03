@@ -25,7 +25,7 @@ known-plaintext quantum key-search manuscript.
    symmetric unmarked subspace is used. Both numerical routes are compared
    with the exact Grover success formula.
 
-4. **Full-round wrong-key occupancy.** The multiplicity experiment retains
+4. **Finite-shot Grover recovery.** The validated historical-key marked sets are\n   reused in an exact shot-limited Grover experiment. With 1024 shots and a\n   100-count threshold, the script computes both the expected-count stopping\n   rule used in recent Mini-AES work and a stronger 99% recovery bound that\n   union-bounds threshold collisions from every wrong key. The same script\n   emits deterministic measurement histograms and explicitly distinguishes\n   per-shot depth reduction from total oracle work.\n\n5. **Full-round wrong-key occupancy.** The multiplicity experiment retains
    the complete cipher but truncates only the ciphertext equality test. Each
    deterministic trial uses a different spread affine master-key subspace, a
    different plaintext, and a different output-window offset. For each tested
@@ -34,13 +34,13 @@ known-plaintext quantum key-search manuscript.
    `16,1,1/16` under the ideal-cipher model. The CI workflow uses
    `u = 12,14,16` and 128 trials per variant and subspace size.
 
-5. **Local reversible cleanup and equivalence.** The optimized shared-monomial
+6. **Local reversible cleanup and equivalence.** The optimized shared-monomial
    S-box construction is exhaustively checked on all 1024 S-box input cases
    with temporary products returned to zero. The 64-bit modulo adder is tested
    on boundary cases and 5000 seeded random pairs with the addend restored and
    carry cleaned. The MDS CNOT network is checked on all 64 basis vectors.
 
-6. **Resource and depth regeneration.** Corrected logical resource tables and
+7. **Resource and depth regeneration.** Corrected logical resource tables and
    dependency-aware depths are regenerated in CI from the declared component
    model rather than copied manually into the evidence package.
 
