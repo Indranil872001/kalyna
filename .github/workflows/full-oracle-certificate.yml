@@ -1,0 +1,59 @@
+name: Kalyna full clean-oracle certificate
+
+on:
+  push:
+    branches:
+      - npj-oracle-certificate-v3
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  certificate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Fetch pinned official Kalyna reference
+        run: |
+          set -euxo pipefail
+          git clone https://github.com/Roman-Oliynykov/Kalyna-reference.git /tmp/Kalyna-reference
+          git -C /tmp/Kalyna-reference checkout 22eafbcaf6635dc5e1f8a734b1f7c5ab84b5a5ea
+          test "$(git -C /tmp/Kalyna-reference rev-parse HEAD)" = "22eafbcaf6635dc5e1f8a734b1f7c5ab84b5a5ea"
+
+      - name: Compile independent reference harness
+        run: |
+          set -euxo pipefail
+          gcc -O3 -std=c11 -Wall -Wextra -I/tmp/Kalyna-reference             validation/reference_oracle_certificate.c             /tmp/Kalyna-reference/kalyna.c /tmp/Kalyna-reference/tables.c             -o validation/kalyna_reference_certificate
+
+      - name: Syntax check canonical compiler
+        run: |
+          python -m py_compile             src/kalyna_oracle/compiler.py             validation/run_full_oracle_certificate.py
+
+      - name: Run full functional oracle certificate
+        run: |
+          set -euxo pipefail
+          python validation/run_full_oracle_certificate.py             --reference ./validation/kalyna_reference_certificate             --random-cases 2
+          cat outputs/full_oracle_certificate/full_oracle_certificate.md
+
+      - name: Record provenance and checksums
+        run: |
+          set -euxo pipefail
+          {
+            echo "kalyna_repo_commit=$(git rev-parse HEAD)"
+            echo "official_reference_commit=$(git -C /tmp/Kalyna-reference rev-parse HEAD)"
+            echo "python=$(python --version 2>&1)"
+            echo "gcc=$(gcc --version | head -1)"
+          } > outputs/full_oracle_certificate/provenance.txt
+          find outputs/full_oracle_certificate -type f -print0 | sort -z |             xargs -0 sha256sum > outputs/full_oracle_certificate/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kalyna-full-clean-oracle-certificate
+          path: outputs/full_oracle_certificate/
+          if-no-files-found: error
