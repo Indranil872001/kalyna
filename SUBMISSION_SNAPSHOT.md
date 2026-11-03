@@ -1,49 +1,89 @@
-# npj Quantum Information submission snapshot v2
+# npj Quantum Information submission snapshot v3
 
-This branch is the working source for the revised manuscript
+This snapshot supports the manuscript
 "Full round quantum key search and spurious key occupancy in Kalyna".
 
-## Immutable provenance used by the manuscript
+## Canonical implementation
 
-- Full validation source commit:
-  `bcb4696e7f8235ef7d0fbba9136146da440fea4d`
-- Successful full-validation GitHub Actions run:
-  `40885242143`
-- Pinned independent Kalyna reference:
-  `22eafbcaf6635dc5e1f8a734b1f7c5ab84b5a5ea`
-- Shared-key-schedule resource-model source:
-  `0b9f227502d1a27f26119942d3929ff2ee21d7e7`
-- Independent resource-audit source:
-  `e71442053da20f7473afa3a79b89b0e6dfbb9f29`
-- Successful resource-audit run:
-  `40887441499`
-- Finite-shot Grover source:
-  `6942bb2bdac6574ed6ef30594bbffff197ea197f`
-- Successful finite-shot workflow run:
-  `41627062982`
-- Minimum machine-readable evidence:
-  `evidence/npj_submission_v2/`
+- Exact functional reversible compiler:
+  `src/kalyna_oracle/compiler.py`
+- Full clean-oracle certificate:
+  `validation/run_full_oracle_certificate.py`
+- One-command reproduction:
+  `bash scripts/reproduce_oracle_certificate.sh`
+- Frozen machine-readable evidence:
+  `evidence/npj_submission_v3/`
 
-## Added finite-shot layer
+## Independent reference
 
-The validated one-marked historical-key predicates are reused in an exact
-1024-shot Grover recovery experiment. For a 100-count detection threshold,
-the code computes both the expected-count stopping rule used in the recent
-Mini-AES study and a stronger 99% recovery lower bound that union-bounds
-threshold collisions from every wrong key.
+The workflows pin the public Kalyna reference implementation at:
 
-At the largest validated search domain, (u=20), the first Grover maximum is
-804 iterations. The 99%-confidence finite-shot decoder requires 181 iterations
-per circuit. In the archived deterministic sample the historical key appears
-119 times and the largest wrong-key count is 2.
+`22eafbcaf6635dc5e1f8a734b1f7c5ab84b5a5ea`
 
-This is explicitly a depth/noise trade-off: 1024 shots require 1024 independent
-circuit executions and therefore do not reduce Grover's total query complexity.
+## Passing evidence used by the manuscript
 
-## Evidence boundary
+- Cleaned-repository full validation:
+  - source `32ebf6170a28359bb82ea9455750d53e796dc0ff`
+  - GitHub Actions run `41643474878`
+  - local S-box/adder/MDS cleanup, full-round restricted-key scans through
+    (2^{20}), 128-trial occupancy experiment, exact resource regeneration
+    and legacy structural-depth diagnostics all pass.
+- Exact functional resource audit:
+  - source `32ebf6170a28359bb82ea9455750d53e796dc0ff`
+  - GitHub Actions run `41643474832`
+  - asserts full-cipher counts
+    ((1550,504548,609232)) and ((2047,665604,803920)) in
+    ((X,\mathrm{CNOT},\mathrm{CCNOT})).
+- Full clean-oracle certificate with exact depth lock:
+  - source `16017141cf37eae2ab423c60e37ddd9661e48225`
+  - GitHub Actions run `41645374938`
+  - official KAT plus ten seeded random cases per variant;
+  - every round key and ciphertext checked against the pinned C reference;
+  - historical key phase-marked and four perturbed wrong keys not marked;
+  - exact compute-mark-inverse restoration of every work wire;
+  - complete phase-oracle dependency depths 2787759 and 4846565.
+- Finite-shot Grover validation:
+  - source `6942bb2bdac6574ed6ef30594bbffff197ea197f`
+  - GitHub Actions run `41627062982`
+  - 1024-shot threshold decoder, including the archived (u=20) example
+    with historical-key count 119 and largest wrong-key count 2.
 
-The full-round experiments exhaustively evaluate the standardized Kalyna
-predicate in tractable master-key subspaces. They do not state-vector simulate
-the complete reversible gate network. Local S-box, modular-adder and MDS checks
-support component-level reversible correctness; physical routing and
-fault-tolerant architecture overhead are outside the logical model.
+## Certified logical resources
+
+Kalyna-128/128:
+- full cipher: 1550 X, 504548 CNOT, 609232 CCNOT;
+- exact forward cipher width: 5126 qubits;
+- historical-key phase-oracle width: 6781 qubits;
+- complete phase-oracle dependency depth: 2787759;
+- complete Grover iteration: 1703126 CCNOT-equivalent;
+- seven-T template: 11921882 logical T gates.
+
+Kalyna-128/256:
+- full cipher: 2047 X, 665604 CNOT, 803920 CCNOT;
+- exact forward cipher width: 6790 qubits;
+- historical-key phase-oracle width: 11005 qubits;
+- complete phase-oracle dependency depth: 4846565;
+- complete Grover iteration: 2963222 CCNOT-equivalent;
+- seven-T template: 20742554 logical T gates.
+
+## Important scope boundary
+
+The full-round restricted-key Grover experiments determine the exact marked set
+with the complete classical Kalyna reference cipher and evolve the Grover
+amplitudes exactly in the tractable search domain. They are not dense
+state-vector simulations of the 6781- or 11005-qubit compiled phase oracles.
+
+The new compiler certificate addresses the separate gate-level question:
+it compiles the exact functional Kalyna mapping, independently verifies round
+keys/ciphertexts, phase marks the historical key, and proves coherent cleanup
+because the uncompute is the exact reverse of the emitted reversible tape.
+
+The compiler uses an out-of-place ANF S-box and therefore retains substantial
+reversible history. Its reported widths and depths describe this concrete
+certified realization; they are not global lower bounds or optimality claims.
+
+## Legacy code
+
+Historical ProjectQ estimators and component experiments are archived under
+`legacy/`. They are retained for provenance only and are not the canonical
+submission implementation.
