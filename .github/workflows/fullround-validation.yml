@@ -72,11 +72,11 @@ jobs:
           python validation/depth_128_corrected.py             | tee outputs/fullround_validation/depth_128_corrected.txt
           {
             echo "=== 128/256 encryption core ==="
-            python kalyna_key_256 --mode enc
+            python legacy/estimators/kalyna_key_256_depth.py --mode enc
             echo "=== 128/256 key schedule ==="
-            python kalyna_key_256 --mode ks
+            python legacy/estimators/kalyna_key_256_depth.py --mode ks
             echo "=== 128/256 full ==="
-            python kalyna_key_256 --mode full
+            python legacy/estimators/kalyna_key_256_depth.py --mode full
           } | tee outputs/fullround_validation/depth_256_corrected.txt
 
       - name: Record immutable provenance
