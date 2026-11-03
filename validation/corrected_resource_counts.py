@@ -48,13 +48,35 @@ def encryption(rounds):
     )
 
 
-def key_schedule(even_keys):
-    # K_sigma: 3 pi + 3 psi + 2 eta + 1 kappa
+def key_schedule_structural(even_keys):
+    """Earlier component formula before functional-copy/constant correction."""
     ksigma = add(scale(PI,3), scale(PSI,3), scale(ETA,2), KAPPA)
-    # Each even key including explicit phi_i:
-    # phi_i eta + Xi(eta,pi,psi,kappa,pi,psi,eta)
     one_even = add(scale(PI,2), scale(PSI,2), scale(ETA,3), KAPPA)
     return add(ksigma, scale(one_even, even_keys))
+
+
+def key_schedule_exact(even_keys, kt_initial_constant):
+    """Exact functional key-schedule count used by the certified compiler.
+
+    Relative to the earlier structural component formula, every even key needs
+    two explicit 128-bit reversible copies:
+      (i) K_t -> phi_i before adding the classical tmv constant;
+      (ii) selected/rotated master-key word -> fresh round-key state.
+    These add 256 CNOTs per even key and no CCX.
+
+    The reference K_t state starts from nb+nk+1 (5 for 128/128, 7 for
+    128/256), contributing its Hamming weight in X gates.  The 64-bit tmv
+    word has four set bits for every shift used here; preparing and
+    unpreparing one reusable classical addend register contributes 8 X gates
+    per even key.
+    """
+    base = key_schedule_structural(even_keys)
+    correction = {
+        "X": kt_initial_constant.bit_count() + 8 * even_keys,
+        "CNOT": 256 * even_keys,
+        "CCX": 0,
+    }
+    return add(base, correction)
 
 
 def historical_grover_ccx(enc_ccx: int, ks_ccx: int, key_bits: int,
@@ -100,11 +122,11 @@ def main():
     rows = {
         "128/128": {
             "encryption": finish(encryption(10)),
-            "key_schedule": finish(key_schedule(6)),
+            "key_schedule": finish(key_schedule_exact(6, 5)),
         },
         "128/256": {
             "encryption": finish(encryption(14)),
-            "key_schedule": finish(key_schedule(8)),
+            "key_schedule": finish(key_schedule_exact(8, 7)),
         },
     }
     for v in rows:
@@ -117,13 +139,13 @@ def main():
     expected = {
         "128/128": {
             "encryption": (600,198056,241952),
-            "key_schedule": (900,304956,367280),
-            "full": (1500,503012,609232),
+            "key_schedule": (950,306492,367280),
+            "full": (1550,504548,609232),
         },
         "128/256": {
             "encryption": (840,276920,338528),
-            "key_schedule": (1140,386636,465392),
-            "full": (1980,663556,803920),
+            "key_schedule": (1207,388684,465392),
+            "full": (2047,665604,803920),
         },
     }
     for v, sections in expected.items():
@@ -141,6 +163,24 @@ def main():
         rows["128/256"]["key_schedule"]["CCX"],
         key_bits=256, block_bits=128, pairs=3,
     )
+
+    rows["correction_note"] = {
+        "128/128": {
+            "delta_key_schedule_X": 50,
+            "delta_key_schedule_CNOT": 1536,
+            "delta_key_schedule_CCX": 0,
+        },
+        "128/256": {
+            "delta_key_schedule_X": 67,
+            "delta_key_schedule_CNOT": 2048,
+            "delta_key_schedule_CCX": 0,
+        },
+        "reason": (
+            "Exact compiler includes K_t->phi_i copies, selected master-word "
+            "copies, the K_t specification constant, and tmv preparation/"
+            "unpreparation. Non-Clifford totals are unchanged."
+        ),
+    }
 
     # Lock the two headline optimized iteration counts.
     assert rows["128/128"]["historical_grover"]["shared_key_schedule"]["complete_iteration_ccx"] == 1703126
