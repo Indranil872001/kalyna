@@ -1,0 +1,18 @@
+{
+  "status": "PASS",
+  "full_validation_workflow_run": 41643474878,
+  "full_validation_source_commit": "32ebf6170a28359bb82ea9455750d53e796dc0ff",
+  "exact_resource_audit_workflow_run": 41643474832,
+  "exact_resource_source_commit": "32ebf6170a28359bb82ea9455750d53e796dc0ff",
+  "128/128": {
+    "full_cipher": {"X": 1550, "CNOT": 504548, "CCX": 609232},
+    "historical_key_complete_iteration_CCX_equivalent": 1703126,
+    "logical_T_7_per_CCX_equivalent": 11921882
+  },
+  "128/256": {
+    "full_cipher": {"X": 2047, "CNOT": 665604, "CCX": 803920},
+    "historical_key_complete_iteration_CCX_equivalent": 2963222,
+    "logical_T_7_per_CCX_equivalent": 20742554
+  },
+  "note": "Exact functional CNOT/X totals include reversible master-word and K_t-to-phi copies plus known key-schedule constants. Non-Clifford totals are unchanged."
+}
