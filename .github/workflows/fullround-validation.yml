@@ -5,6 +5,7 @@ on:
     branches:
       - fullround-validation-v1
       - npj-oracle-multiplicity-v1
+      - npj-oracle-certificate-v3
   workflow_dispatch:
 
 permissions:
