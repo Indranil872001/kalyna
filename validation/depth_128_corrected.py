@@ -17,7 +17,7 @@ from projectq import MainEngine
 
 
 ROOT = Path(__file__).resolve().parents[1]
-loader = importlib.machinery.SourceFileLoader("kalyna_common", str(ROOT / "kalyna_key_256"))
+loader = importlib.machinery.SourceFileLoader("kalyna_common", str(ROOT / "legacy" / "estimators" / "kalyna_key_256_depth.py"))
 spec = importlib.util.spec_from_loader(loader.name, loader)
 m = importlib.util.module_from_spec(spec)
 loader.exec_module(m)
