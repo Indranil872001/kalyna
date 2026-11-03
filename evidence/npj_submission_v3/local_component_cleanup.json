@@ -1,0 +1,6 @@
+{
+  "adder64": {"tests":5009,"sum_mod_2_64":"PASS","addend_preserved":"PASS","carry_cleanup":"PASS"},
+  "mds": {"basis_vectors":64,"linear_network_equivalence":"PASS","one_column_cnot":1770,"two_column_cnot":3540},
+  "sbox": {"truth_table_cases":1024,"temporary_cleanup":"PASS","optimized_layer_counts":{"X":60,"CNOT":16048,"CCX":24144}},
+  "scope":"Local component cleanup/equivalence only; this does not certify complete full-circuit live-ancilla cleanup or physical routing."
+}
