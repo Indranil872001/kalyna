@@ -1,0 +1,20 @@
+{
+  "variant": "128/128",
+  "unknown_bits": 20,
+  "candidates": 1048576,
+  "policy": "confidence_99",
+  "iterations": 181,
+  "success_probability": 0.12048828497043158,
+  "shots": 1024,
+  "target_count": 119,
+  "max_wrong_count": 2,
+  "distinct_wrong_keys_observed": 904,
+  "top5": [
+    {"key_index": 0, "count": 119},
+    {"key_index": 562315, "count": 2},
+    {"key_index": 369, "count": 1},
+    {"key_index": 2579, "count": 1},
+    {"key_index": 2863, "count": 1}
+  ],
+  "seed_rule": "20261103 + 1000003*128 + 7919*u"
+}
