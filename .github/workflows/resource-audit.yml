@@ -1,9 +1,10 @@
-name: Kalyna resource audit\n# Fast independent certificate for manuscript headline counts.
+name: Kalyna resource audit
 
 on:
   push:
     branches:
       - npj-oracle-multiplicity-v1
+      - npj-oracle-certificate-v3
   workflow_dispatch:
 
 permissions:
@@ -24,6 +25,8 @@ jobs:
           python - <<'PY'
           import json
           d=json.load(open("resource_audit.json"))
+          assert (d["128/128"]["full"]["X"], d["128/128"]["full"]["CNOT"], d["128/128"]["full"]["CCX"]) == (1550, 504548, 609232)
+          assert (d["128/256"]["full"]["X"], d["128/256"]["full"]["CNOT"], d["128/256"]["full"]["CCX"]) == (2047, 665604, 803920)
           assert d["128/128"]["historical_grover"]["shared_key_schedule"]["complete_iteration_ccx"] == 1703126
           assert d["128/128"]["historical_grover"]["shared_key_schedule"]["T_7_per_CCX"] == 11921882
           assert d["128/256"]["historical_grover"]["shared_key_schedule"]["complete_iteration_ccx"] == 2963222
