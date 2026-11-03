@@ -24,12 +24,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def load_sboxes() -> list[list[int]]:
-    text = (ROOT / "kalyna_key_256").read_text()
+    text = (ROOT / "legacy" / "estimators" / "kalyna_key_256_depth.py").read_text()
     out = []
     for sid in range(4):
         m = re.search(rf"PI{sid}_HEX\s*=\s*\"\"\"(.*?)\"\"\"", text, re.S)
         if not m:
-            raise RuntimeError(f"PI{sid}_HEX not found in kalyna_key_256")
+            raise RuntimeError(f"PI{sid}_HEX not found in legacy Kalyna estimator")
         vals = [int(x, 16) for x in m.group(1).split()]
         if len(vals) != 256:
             raise RuntimeError(f"PI{sid} has {len(vals)} entries")
