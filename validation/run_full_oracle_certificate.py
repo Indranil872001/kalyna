@@ -113,11 +113,20 @@ def test_cipher_variant(exe: Path, key_bits: int, random_cases: int) -> dict:
             }
         )
 
-    expected_ccx = 609232 if key_bits == 128 else 803920
-    if program.tape.counts["CCX"] != expected_ccx:
+    expected = {
+        128: {"CCX": 609232, "CNOT": 504548, "X": 1550, "width": 5126},
+        256: {"CCX": 803920, "CNOT": 665604, "X": 2047, "width": 6790},
+    }[key_bits]
+    for gate in ("CCX", "CNOT", "X"):
+        if program.tape.counts[gate] != expected[gate]:
+            raise AssertionError(
+                f"{key_bits}: exact compiler {gate} {program.tape.counts[gate]} "
+                f"!= frozen value {expected[gate]}"
+            )
+    if program.tape.physical_width != expected["width"]:
         raise AssertionError(
-            f"{key_bits}: exact compiler CCX {program.tape.counts['CCX']} "
-            f"!= manuscript nonlinear count {expected_ccx}"
+            f"{key_bits}: cipher width {program.tape.physical_width} "
+            f"!= frozen value {expected['width']}"
         )
 
     return {
@@ -140,17 +149,35 @@ def test_phase_oracle(key_bits: int) -> dict:
             f"{key_bits}: historical key oracle result marked={marked}, clean={clean}"
         )
 
-    wrong = bytearray(true_key)
-    wrong[0] ^= 0x01
-    wrong_marked, wrong_clean = simulate_phase_oracle_basis(program, bytes(wrong))
-    if wrong_marked or not wrong_clean:
-        raise AssertionError(
-            f"{key_bits}: nearby wrong key marked={wrong_marked}, clean={wrong_clean}"
+    wrong_specs = [
+        (0, 0x01),
+        (0, 0x80),
+        (len(true_key) // 2, 0x04),
+        (len(true_key) - 1, 0x40),
+    ]
+    wrong_results = []
+    for byte_index, mask in wrong_specs:
+        wrong = bytearray(true_key)
+        wrong[byte_index] ^= mask
+        wrong_marked, wrong_clean = simulate_phase_oracle_basis(program, bytes(wrong))
+        if wrong_marked or not wrong_clean:
+            raise AssertionError(
+                f"{key_bits}: wrong key at byte {byte_index} mask {mask:#x} "
+                f"marked={wrong_marked}, clean={wrong_clean}"
+            )
+        wrong_results.append(
+            {
+                "byte_index": byte_index,
+                "xor_mask": mask,
+                "phase_marked": wrong_marked,
+                "exact_cleanup": wrong_clean,
+            }
         )
 
     resources = complete_iteration_nonclifford(program)
     expected_iter = 1703126 if key_bits == 128 else 2963222
     expected_t = 11921882 if key_bits == 128 else 20742554
+    expected_width = 6781 if key_bits == 128 else 11005
     if resources["complete_iteration_CCX_equivalent"] != expected_iter:
         raise AssertionError(
             f"{key_bits}: complete iteration CCX-equivalent mismatch "
@@ -161,14 +188,18 @@ def test_phase_oracle(key_bits: int) -> dict:
             f"{key_bits}: complete iteration T mismatch "
             f"{resources['complete_iteration_T_7_per_CCX']} != {expected_t}"
         )
+    if resources["compiled_physical_width"] != expected_width:
+        raise AssertionError(
+            f"{key_bits}: phase-oracle width {resources['compiled_physical_width']} "
+            f"!= frozen value {expected_width}"
+        )
 
     structural = structural_inverse_certificate(program)
     return {
         "variant": f"128/{key_bits}",
         "historical_key_phase_marked": marked,
         "historical_key_exact_cleanup": clean,
-        "nearby_wrong_key_phase_marked": wrong_marked,
-        "nearby_wrong_key_exact_cleanup": wrong_clean,
+        "wrong_key_checks": wrong_results,
         "resources": resources,
         "structural_inverse_certificate": structural,
         "work_wires_returned_to_zero": resources["compiled_physical_width"] - key_bits,
