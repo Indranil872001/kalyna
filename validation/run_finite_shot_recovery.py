@@ -85,7 +85,7 @@ def binom_tail_ge(n: int, p: float, threshold: int) -> float:
         return 0.0
     if lt >= 0.0:
         return 1.0
-    return math.exp(lt)
+    return min(1.0, math.exp(lt))
 
 
 def recovery_lower_bound(N: int, j: int, shots: int, threshold: int) -> tuple[float, float, float, float]:
@@ -96,7 +96,7 @@ def recovery_lower_bound(N: int, j: int, shots: int, threshold: int) -> tuple[fl
     log_wrong_tail = log_binom_tail_ge(shots, q, threshold)
     log_union = math.log(N - 1) + log_wrong_tail
     union_wrong = 0.0 if log_union < -745 else min(1.0, math.exp(log_union))
-    lower = max(0.0, target_tail - union_wrong)
+    lower = min(1.0, max(0.0, target_tail - union_wrong))
     log10_false_alarm = log_union / math.log(10.0)
     return p, target_tail, lower, log10_false_alarm
 
