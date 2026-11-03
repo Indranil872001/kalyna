@@ -178,6 +178,7 @@ def test_phase_oracle(key_bits: int) -> dict:
     expected_iter = 1703126 if key_bits == 128 else 2963222
     expected_t = 11921882 if key_bits == 128 else 20742554
     expected_width = 6781 if key_bits == 128 else 11005
+    expected_phase_depth = 2787759 if key_bits == 128 else 4846565
     if resources["complete_iteration_CCX_equivalent"] != expected_iter:
         raise AssertionError(
             f"{key_bits}: complete iteration CCX-equivalent mismatch "
@@ -192,6 +193,12 @@ def test_phase_oracle(key_bits: int) -> dict:
         raise AssertionError(
             f"{key_bits}: phase-oracle width {resources['compiled_physical_width']} "
             f"!= frozen value {expected_width}"
+        )
+    if resources["complete_phase_oracle_dependency_depth"] != expected_phase_depth:
+        raise AssertionError(
+            f"{key_bits}: phase-oracle depth "
+            f"{resources['complete_phase_oracle_dependency_depth']} "
+            f"!= frozen value {expected_phase_depth}"
         )
 
     structural = structural_inverse_certificate(program)
@@ -235,9 +242,11 @@ def write_report(result: dict, outdir: Path) -> None:
             f"- Exact compiler forward X: {fs['X']}.",
             f"- Compiler physical/peak width: {fs['physical_width']} qubits.",
             f"- Historical-key phase mark: PASS.",
-            f"- Nearby wrong-key non-mark: PASS.",
+            f"- Four perturbed wrong-key non-marks: PASS.",
             f"- Work wires restored by compute-mark-inverse: "
             f"{o['work_wires_returned_to_zero']}.",
+            f"- Complete phase-oracle dependency depth: "
+            f"{rs['complete_phase_oracle_dependency_depth']}.",
             f"- Complete iteration CCX-equivalent: "
             f"{rs['complete_iteration_CCX_equivalent']}.",
             f"- Complete iteration T (7 per CCX-equivalent): "
