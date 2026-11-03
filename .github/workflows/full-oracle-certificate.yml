@@ -38,7 +38,7 @@ jobs:
       - name: Run full functional oracle certificate
         run: |
           set -euxo pipefail
-          python validation/run_full_oracle_certificate.py             --reference ./validation/kalyna_reference_certificate             --random-cases 2
+          python validation/run_full_oracle_certificate.py             --reference ./validation/kalyna_reference_certificate             --random-cases 10
           cat outputs/full_oracle_certificate/full_oracle_certificate.md
 
       - name: Record provenance and checksums
