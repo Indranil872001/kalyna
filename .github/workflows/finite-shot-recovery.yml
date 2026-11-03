@@ -1,0 +1,49 @@
+name: Kalyna finite-shot Grover recovery
+
+on:
+  push:
+    branches:
+      - npj-finite-shot-v2
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  finite-shot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run finite-shot reduced-domain Grover recovery
+        run: |
+          set -euxo pipefail
+          python validation/run_finite_shot_recovery.py \
+            --input evidence/npj_submission_v1/fullround_sparse_results.csv \
+            --shots 1024 \
+            --threshold 100 \
+            --confidence 0.99
+          cat outputs/finite_shot_recovery/finite_shot_report.md
+
+      - name: Assert headline finite-shot results
+        run: |
+          python - <<'PY'
+          import csv
+          rows=list(csv.DictReader(open("outputs/finite_shot_recovery/finite_shot_summary.csv")))
+          for r in rows:
+              assert float(r["recovery_probability_lower_bound"]) >= 0.99
+          u20=[r for r in rows if r["variant"]=="128/128" and r["unknown_bits"]=="20"][0]
+          assert int(u20["j_confident_threshold"]) == 181
+          assert float(u20["depth_reduction_vs_j_star"]) > 4.4
+          assert int(u20["j_single_run_99"]) == 753
+          print("FINITE_SHOT_GROVER_RECOVERY_PASS")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kalyna-finite-shot-recovery
+          path: outputs/finite_shot_recovery/
+          if-no-files-found: error
