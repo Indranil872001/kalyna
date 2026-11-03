@@ -1,0 +1,32 @@
+{
+  "status": "PASS",
+  "workflow_run": 41645374938,
+  "source_commit": "16017141cf37eae2ab423c60e37ddd9661e48225",
+  "pinned_reference_commit": "22eafbcaf6635dc5e1f8a734b1f7c5ab84b5a5ea",
+  "reference_cases_per_variant": 11,
+  "wrong_key_phase_checks_per_variant": 4,
+  "128/128": {
+    "cipher_gate_counts": {"X": 1550, "CNOT": 504548, "CCX": 609232},
+    "cipher_dependency_depth": 998344,
+    "cipher_physical_width": 5126,
+    "phase_oracle_physical_width": 6781,
+    "phase_oracle_dependency_depth": 2787759,
+    "non_key_work_wires_restored": 6653,
+    "complete_iteration_CCX_equivalent": 1703126,
+    "complete_iteration_T_7_per_CCX_equivalent": 11921882,
+    "forward_cipher_sha256": "14921311f65d41d1f8bfb35859a8f52f1b2c1877bec84bb11a2d679a11227d01",
+    "phase_oracle_forward_sha256": "f3a7fc4b45771c718d4d5aaf2f145e2cbd59972e6ef8e930fe3862265dc6574d"
+  },
+  "128/256": {
+    "cipher_gate_counts": {"X": 2047, "CNOT": 665604, "CCX": 803920},
+    "cipher_dependency_depth": 1317138,
+    "cipher_physical_width": 6790,
+    "phase_oracle_physical_width": 11005,
+    "phase_oracle_dependency_depth": 4846565,
+    "non_key_work_wires_restored": 10749,
+    "complete_iteration_CCX_equivalent": 2963222,
+    "complete_iteration_T_7_per_CCX_equivalent": 20742554,
+    "forward_cipher_sha256": "f3f77ac8fa296aa510dac6910787ea4de0a1eac81b295d922ff948388d9ade64"
+  },
+  "cleanup_statement": "The equality marker is diagonal and basis-preserving; the uncompute is the exact reverse of the emitted X/CNOT/CCNOT forward tape. Hence all work wires are restored coherently for arbitrary key superpositions. Basis-state tests independently check that the forward tape implements the intended Kalyna mapping."
+}
