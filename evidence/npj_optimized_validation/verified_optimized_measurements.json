@@ -1,0 +1,63 @@
+{
+  "status": "PASS",
+  "verification_run": "https://github.com/Indranil872001/kalyna/actions/runs/44899708507",
+  "verifying_source_commit": "da6ce81155018080b80407ea63694243b19cfe77",
+  "reference_commit": "22eafbcaf6635dc5e1f8a734b1f7c5ab84b5a5ea",
+  "reference_cases_per_variant_and_cutoff": 11,
+  "negative_wrong_key_cases_per_variant_and_cutoff": 4,
+  "interpretation": "Complete logical forward-mark-reverse oracle validated; diffuser included in iteration T/CCNOT-equivalent counts, not in phase-oracle dependency depth; no quantum-hardware execution or fault-tolerant scheduling",
+  "rows": [
+    {
+      "variant": "128/128",
+      "cutoff": 3,
+      "forward_cipher_X": 1550,
+      "forward_cipher_CNOT": 509548,
+      "forward_cipher_CCNOT": 208232,
+      "forward_cipher_width": 5206,
+      "phase_oracle_width": 6781,
+      "phase_oracle_dependency_depth": 1296549,
+      "complete_iteration_CCNOT_equivalent": 580326,
+      "complete_iteration_T7": 4062282,
+      "phase_forward_sha256": "124574cedeeee53e270e042d46b8bced0ccdb42783c8a94b051e45a43726c202"
+    },
+    {
+      "variant": "128/256",
+      "cutoff": 3,
+      "forward_cipher_X": 2047,
+      "forward_cipher_CNOT": 672204,
+      "forward_cipher_CCNOT": 274600,
+      "forward_cipher_width": 6870,
+      "phase_oracle_width": 11005,
+      "phase_oracle_dependency_depth": 2247847,
+      "complete_iteration_CCNOT_equivalent": 1006342,
+      "complete_iteration_T7": 7044394,
+      "phase_forward_sha256": "a394c9197557d2411b6f3c832cff84476b4fd7e8f169bc77c5de86bbf307bb08"
+    },
+    {
+      "variant": "128/128",
+      "cutoff": 4,
+      "forward_cipher_X": 1550,
+      "forward_cipher_CNOT": 509548,
+      "forward_cipher_CCNOT": 202032,
+      "forward_cipher_width": 5275,
+      "phase_oracle_width": 6781,
+      "phase_oracle_dependency_depth": 905949,
+      "complete_iteration_CCNOT_equivalent": 562966,
+      "complete_iteration_T7": 3940762,
+      "phase_forward_sha256": "49cbdb668de9a51fd342040242b8cd8fb2d27e9cb486f9ae1ca016dac5fb4450"
+    },
+    {
+      "variant": "128/256",
+      "cutoff": 4,
+      "forward_cipher_X": 2047,
+      "forward_cipher_CNOT": 672204,
+      "forward_cipher_CCNOT": 266416,
+      "forward_cipher_width": 6939,
+      "phase_oracle_width": 11005,
+      "phase_oracle_dependency_depth": 1567397,
+      "complete_iteration_CCNOT_equivalent": 976086,
+      "complete_iteration_T7": 6832602,
+      "phase_forward_sha256": "9aed3024983211692a02475cf6431d80f519c8c4ffae5a1563dc7e463a8346fc"
+    }
+  ]
+}
