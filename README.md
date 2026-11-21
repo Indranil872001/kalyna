@@ -1,87 +1,55 @@
-# Verified quantum key search on Kalyna
+# Kalyna — clean reviewer reproducibility snapshot
 
-Reproducibility repository for the npj Quantum Information manuscript on
-full-round known-plaintext Grover key search for Kalyna-128/128 and
-Kalyna-128/256.
+**Paper:** Full-round quantum key search and spurious-key occupancy in Kalyna
+**Target:** npj Quantum Information
 
-## Start here
+This isolated branch contains *only the Kalyna code and permanent evidence required to reproduce the manuscript*. It excludes WARP, old exploratory ProjectQ estimators, duplicate v1/v2 datasets and retired workflows. **No other branch or repository was deleted or modified.**
 
-There is **one canonical reversible implementation** for the submission:
+## One command to verify the functional circuit
 
-- `src/kalyna_oracle/compiler.py`
-  - exact functional reversible compiler for the Kalyna key schedule and
-    encryption;
-  - includes the K_t specification constant, tmv constants, selected/rotated
-    master-key-word copies and odd-key rotation;
-  - emits a concrete X/CNOT/CCNOT gate tape;
-  - retains out-of-place S-box history explicitly and cleans it globally by
-    exact forward-mark-inverse uncomputation.
-
-The main certification driver is:
-
-- `validation/run_full_oracle_certificate.py`
-
-The easiest reproduction path is:
+Requires Python 3.11+, git and GCC. The command fetches the independent Kalyna reference at a frozen commit.
 
 ```bash
-bash scripts/reproduce_oracle_certificate.sh
+git clone --branch npj-reviewer-clean-20261121 --single-branch https://github.com/Indranil872001/kalyna.git
+cd kalyna
+bash scripts/reproduce.sh quick
 ```
 
-It pins the independent reference implementation, compiles the reference
-harness, runs the exact compiler, compares every round key and ciphertext,
-checks phase marking, checks four perturbed wrong keys per variant, measures
-the concrete logical depth/width, and verifies exact work-register restoration.
+This checks all four S-box truth tables (all 256 inputs, three nonzero/zero output-register patterns, h=2/3/4), then performs original and optimized full-round oracle tests against independent ciphertext and round-key generation, including correct/wrong phase marks and cleanup. It also regenerates the original logical resource audit.
 
-## Submission evidence
+For the complete, slower restricted-key and occupancy experiments:
 
-The reviewer-facing machine-readable snapshot is:
+```bash
+python3 -m pip install -r requirements.txt
+bash scripts/reproduce.sh full
+```
 
-- `evidence/npj_submission_v3/`
+Outputs go to ignored `outputs/`. Reproducibility is also checked automatically under GitHub **Actions** for the clean branch. Full occupancy runs can be computationally expensive.
 
-It contains the restricted-key search results, finite-shot tables, occupancy
-statistics, local component checks, exact resource audit and clean-oracle
-certificate summary.
+## Claim-to-code map
 
-The core passing CI runs used by the submission are documented in
-`SUBMISSION_SNAPSHOT.md`.
+| Manuscript result | Code | Permanent evidence |
+|---|---|---|
+| Full-round Kalyna reference compiler, clean oracle | `src/kalyna_oracle/compiler.py`, `validation/run_full_oracle_certificate.py` | `evidence/npj_submission_v3/full_oracle_certificate_summary.json` |
+| New monomial-bank S-box, verified h=3 and h=4 full oracles | `validation/optimized_oracle_experiment.py`, `validation/check_sbox_monomial_bank.py` | `evidence/npj_optimized_validation/verified_optimized_measurements.json`, `sbox_tradeoff.csv` |
+| Original full-cipher gate counts | `validation/corrected_resource_counts.py` | `evidence/npj_submission_v3/exact_resource_audit.json` |
+| Historical-key restricted-domain scan (up to 2^20) | `validation/reference_sparse_scan.c`, `validation/run_fullround_sparse.py` | `evidence/npj_submission_v3/fullround_sparse_results.csv` |
+| Grover probabilities, 1024-shot decoder | `validation/run_finite_shot_recovery.py` | `evidence/npj_submission_v3/finite_shot_summary.csv`, `finite_shot_u20_sample.json` |
+| Original 128-trial spurious-key study | `validation/reference_oracle_multiplicity.c`, `validation/run_oracle_multiplicity.py` | `evidence/npj_submission_v3/oracle_multiplicity_summary.csv` |
+| 512-observation independently seeded replication | `validation/reference_oracle_multiplicity_seeded.c`, `validation/seeded_occupancy_replicate.py` | `evidence/npj_optimized_validation/seeded_occupancy_512_summary.csv` |
 
-## Other submission experiments
+Read [`CLAIM_TO_CODE.md`](CLAIM_TO_CODE.md) for exact scope, limitations and previous validation-run provenance.
 
-- `validation/run_fullround_sparse.py` - exhaustive full-round restricted-key
-  historical-key scans and exact Grover amplitudes.
-- `validation/run_finite_shot_recovery.py` - 1024-shot recovery and rigorous
-  threshold-confidence bounds.
-- `validation/run_oracle_multiplicity.py` - full-round wrong-key occupancy
-  experiments.
-- `validation/check_local_cleanup.py` - exhaustive/local component cleanup
-  and equivalence checks.
-- `validation/corrected_resource_counts.py` - exact functional resource
-  accounting and complete Grover non-Clifford totals.
+## Independent reference and scientific scope
 
-GitHub Actions workflows under `.github/workflows/` reproduce these checks.
+Reference implementation: https://github.com/Roman-Oliynykov/Kalyna-reference at commit `22eafbcaf6635dc5e1f8a734b1f7c5ab84b5a5ea`. Its source is fetched, not duplicated here.
 
-## What is in legacy/
+These experiments **do not** execute Grover on physical quantum hardware, nor densely simulate the several-thousand-qubit compiled oracle. The predicate is established from complete classical Kalyna encryptions on restricted master-key domains, then exact mathematical amplitude/shot formulas are applied. The reported quantum counts are logical circuit resources for specific emitted constructions, without hardware routing or error correction; optimized reductions are measured against our own original shared-ANF compiler. Occupancy comparisons use truncated b-bit outputs as a diagnostic, not a production full-equality historical-key oracle.
 
-The former root-level files
-`kalyna_key-128`, `kalyna_key_256`, `kalyna_key_schedule_128`,
-`addition_modulo2^64` and `kalyna_mixcolumn` came from different stages of
-the research. They are preserved under `legacy/` so they cannot be mistaken
-for the submission implementation.
+## Provenance
 
-In particular:
+Original full-oracle/finite-shot submission snapshot: `npj-submission-v3` at `964c5c3ddb42b288f6a69d740e5cf400bcc271bd`.
+Optimized source and seeded replication: `npj-optimized-oracle-audit-20261121` at `707bc0dc65a3c6660681b99c51c6718707d001d4`.
+Certified original optimized workflow: https://github.com/Indranil872001/kalyna/actions/runs/44899708507 ; seeded-replication workflow: https://github.com/Indranil872001/kalyna/actions/runs/44899877953 .
 
-- the old 256-bit file is a **structural depth estimator**, not the canonical
-  functional key schedule;
-- the old 128-bit schedule estimator contains pre-correction resource
-  conventions and must not be used for manuscript numbers.
-
-See `legacy/README.md` for details.
-
-## Evidence boundary
-
-The compiler certificate establishes a clean **logical** phase oracle. It does
-not claim present-day hardware execution, surface-code overhead, routing,
-magic-state-factory cost or architecture-specific latency. The concrete
-retained-garbage compiler reports its actual width and a schedule-dependent
-logical dependency depth rather than silently discarding intermediate
-S-box/key-schedule history.
+The original development history remains intact on its existing branches.

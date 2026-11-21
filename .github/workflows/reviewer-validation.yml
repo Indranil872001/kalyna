@@ -1,0 +1,24 @@
+name: Kalyna reviewer one-command validation
+on:
+  push:
+    branches: [npj-reviewer-clean-20261121]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reviewer-functional-certificate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify original and optimized Kalyna full-round circuits
+        run: bash scripts/reproduce.sh quick
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kalyna-reviewer-quick-certificate
+          path: outputs/
+          if-no-files-found: warn

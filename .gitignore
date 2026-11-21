@@ -1,0 +1,10 @@
+outputs/
+.cache/
+__pycache__/
+*.pyc
+*.o
+.venv/
+validation/kalyna_reference_certificate
+validation/kalyna_scan
+validation/kalyna_multiplicity_scan
+validation/kalyna_multiplicity_seeded
