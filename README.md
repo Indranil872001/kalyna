@@ -32,6 +32,7 @@ Outputs go to ignored `outputs/`. Reproducibility is also checked automatically 
 |---|---|---|
 | Full-round Kalyna reference compiler, clean oracle | `src/kalyna_oracle/compiler.py`, `validation/run_full_oracle_certificate.py` | `evidence/npj_submission_v3/full_oracle_certificate_summary.json` |
 | New monomial-bank S-box, verified h=3 and h=4 full oracles | `validation/optimized_oracle_experiment.py`, `validation/check_sbox_monomial_bank.py` | `evidence/npj_optimized_validation/verified_optimized_measurements.json`, `sbox_tradeoff.csv` |
+| Local S-box, 64-bit adder and MDS cleanup checks | `validation/check_local_cleanup.py` | `evidence/npj_submission_v3/local_component_cleanup.json` |
 | Original full-cipher gate counts | `validation/corrected_resource_counts.py` | `evidence/npj_submission_v3/exact_resource_audit.json` |
 | Historical-key restricted-domain scan (up to 2^20) | `validation/reference_sparse_scan.c`, `validation/run_fullround_sparse.py` | `evidence/npj_submission_v3/fullround_sparse_results.csv` |
 | Grover probabilities, 1024-shot decoder | `validation/run_finite_shot_recovery.py` | `evidence/npj_submission_v3/finite_shot_summary.csv`, `finite_shot_u20_sample.json` |
