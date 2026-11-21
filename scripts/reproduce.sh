@@ -12,8 +12,9 @@ git -C "$REFDIR" checkout --detach --quiet "$PIN"
 test "$(git -C "$REFDIR" rev-parse HEAD)" = "$PIN"
 REFEXE="$ROOT/validation/kalyna_reference_certificate"
 gcc -O3 -std=c11 -Wall -Wextra -I"$REFDIR" validation/reference_oracle_certificate.c "$REFDIR/kalyna.c" "$REFDIR/tables.c" -o "$REFEXE"
-python3 -m py_compile src/kalyna_oracle/compiler.py validation/run_full_oracle_certificate.py validation/optimized_oracle_experiment.py validation/check_sbox_monomial_bank.py validation/corrected_resource_counts.py validation/run_fullround_sparse.py validation/run_finite_shot_recovery.py validation/run_oracle_multiplicity.py validation/seeded_occupancy_replicate.py
+python3 -m py_compile src/kalyna_oracle/compiler.py validation/run_full_oracle_certificate.py validation/optimized_oracle_experiment.py validation/check_sbox_monomial_bank.py validation/check_local_cleanup.py validation/corrected_resource_counts.py validation/run_fullround_sparse.py validation/run_finite_shot_recovery.py validation/run_oracle_multiplicity.py validation/seeded_occupancy_replicate.py
 PYTHONPATH=. python3 validation/check_sbox_monomial_bank.py
+PYTHONPATH=. python3 validation/check_local_cleanup.py
 PYTHONPATH=. python3 validation/run_full_oracle_certificate.py --reference "$REFEXE" --random-cases 10
 for h in 3 4; do PYTHONPATH=. python3 validation/optimized_oracle_experiment.py --cutoff "$h" --reference "$REFEXE" --random-cases 10 --out "outputs/optimized_oracle/cutoff_$h.json"; done
 PYTHONPATH=. python3 validation/corrected_resource_counts.py
