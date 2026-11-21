@@ -1,0 +1,52 @@
+name: Kalyna optimized full-oracle independent certificate
+on:
+  push:
+    branches:
+      - npj-optimized-oracle-audit-20261121
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  optimized-oracle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        cutoff: [3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Fetch exact independent Kalyna reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/Roman-Oliynykov/Kalyna-reference.git /tmp/Kalyna-reference
+          git -C /tmp/Kalyna-reference checkout 22eafbcaf6635dc5e1f8a734b1f7c5ab84b5a5ea
+          test "$(git -C /tmp/Kalyna-reference rev-parse HEAD)" = "22eafbcaf6635dc5e1f8a734b1f7c5ab84b5a5ea"
+      - name: Compile independent reference harness
+        shell: bash
+        run: |
+          gcc -O3 -std=c11 -Wall -Wextra -I/tmp/Kalyna-reference \
+            validation/reference_oracle_certificate.c \
+            /tmp/Kalyna-reference/kalyna.c /tmp/Kalyna-reference/tables.c \
+            -o validation/kalyna_reference_certificate
+      - name: Validate modified full-round cipher and complete oracle
+        env:
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile validation/optimized_oracle_experiment.py
+          python validation/optimized_oracle_experiment.py \
+            --cutoff ${{ matrix.cutoff }} --random-cases 10 \
+            --reference ./validation/kalyna_reference_certificate \
+            --out outputs/optimized_oracle/cutoff_${{ matrix.cutoff }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: optimized-oracle-h${{ matrix.cutoff }}
+          path: outputs/optimized_oracle/
+          if-no-files-found: warn
